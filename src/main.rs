@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::{env, process};
 
 #[derive(PartialEq, Debug)]
@@ -65,8 +65,11 @@ fn main() {
         process::exit(1);
     });
 
+    let stdout = std::io::stdout();
+    let mut handle = stdout.lock();
+
     for (idx, line) in result.into_iter() {
-        println!("{}: {}", idx, line);
+        writeln!(handle, "{}: {}", idx, line).unwrap();
     }
 }
 
