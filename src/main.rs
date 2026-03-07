@@ -3,8 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::{env, process};
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 struct Config {
     file: String,
     pattern: String,
@@ -29,19 +28,14 @@ impl Config {
 }
 
 /// Search file content for matching line
-/// If unable to read the file then  return error
-fn search(config: &Config) -> Result<HashMap<usize, String>, String> {
-    let file = match File::open(&config.file) {
-        Ok(file) => file,
-        Err(err) => return Err(err.to_string()),
-    };
-    let reader = BufReader::new(file);
+/// If error during reading a line stop searching immediately
+fn search(pattern: &str, reader: impl BufRead) -> Result<HashMap<usize, String>, String> {
     let mut result = HashMap::new();
 
     for (idx, line) in reader.lines().enumerate() {
         match line {
             Ok(l) => {
-                if l.contains(&config.pattern) {
+                if l.contains(pattern) {
                     result.insert(idx, l);
                 }
             }
@@ -58,7 +52,15 @@ fn main() {
         eprintln!("Problem parsing arguments: {err}");
         process::exit(1);
     });
-    let result = search(&config).unwrap_or_else(|err| {
+    let file = match File::open(&config.file) {
+        Ok(file) => file,
+        Err(err) => {
+            eprintln!("unable to read file: {err}");
+            process::exit(1);
+        }
+    };
+    let reader = BufReader::new(file);
+    let result = search(&config.pattern, reader).unwrap_or_else(|err| {
         eprintln!("{}", err);
         process::exit(1);
     });
@@ -94,5 +96,35 @@ mod tests {
         let result = Config::new(args.into_iter());
         assert!(result.is_err());
         assert_eq!(result, Err("no argument passed for pattern"));
+    }
+
+
+    #[test]
+    fn test_search_finds_matching_lines() {
+        let content = b"hello world\nrust\nworld";
+        let reader = BufReader::new(&content[..]);
+
+        let result = search(&"world", reader).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result.get(&0), Some(&"hello world".to_string()));
+    }
+
+    #[test]
+    fn test_search_with_no_match() {
+        let content = b"world\nrust\nworld";
+        let reader = BufReader::new(&content[..]);
+
+        let result = search(&"hello", reader).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+
+    #[test]
+    fn test_search_with_case_sensitive() {
+        let content = b"world\nrust\nWorld";
+        let reader = BufReader::new(&content[..]);
+
+        let result = search(&"World", reader).unwrap();
+        assert_eq!(result.len(), 1);
     }
 }
