@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::{
     env::{self},
     fs, process,
@@ -10,7 +11,7 @@ struct Config {
 }
 
 impl Config {
-    fn new(mut args: impl Iterator<Item = String>) -> Result<Self, &'static str> {
+    fn new(mut args: impl Iterator<Item=String>) -> Result<Self, &'static str> {
         args.next();
 
         let pattern = match args.next() {
@@ -27,12 +28,8 @@ impl Config {
     }
 }
 
-fn main() {
-    let config = Config::new(env::args()).unwrap_or_else(|err| {
-        eprintln!("Problem parsing arguments: {err}");
-        process::exit(1);
-    });
-    let content = match fs::read_to_string(config.file) {
+fn search(config: &Config) -> HashMap<usize, String> {
+    let content = match fs::read_to_string(&config.file) {
         Ok(file_content) => file_content,
         Err(_) => {
             eprintln!("unable to read file");
@@ -40,9 +37,24 @@ fn main() {
         }
     };
     let lines: Vec<_> = content.lines().map(String::from).collect();
-    for i in 0..lines.len() {
-        if lines[i].contains(&config.pattern) {
-            println!("{}:{}", i, lines[i]);
-        }
+    let mut result = HashMap::new();
+    lines
+        .into_iter()
+        .enumerate()
+        .filter(|(idx, line)| line.contains(&config.pattern))
+        .for_each(|(idx, line)| { result.insert(idx, line); });
+
+    result
+}
+
+fn main() {
+    let config = Config::new(env::args()).unwrap_or_else(|err| {
+        eprintln!("Problem parsing arguments: {err}");
+        process::exit(1);
+    });
+    let result = search(&config);
+
+    for (idx, line) in result.into_iter() {
+        println!("{}: {}", idx, line);
     }
 }
