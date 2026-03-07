@@ -4,6 +4,7 @@ use std::io::{BufRead, BufReader};
 use std::{env, process};
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 struct Config {
     file: String,
     pattern: String,
@@ -64,5 +65,34 @@ fn main() {
 
     for (idx, line) in result.into_iter() {
         println!("{}: {}", idx, line);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_with_valid_args() {
+        let args = vec!["app".to_string(), "pattern".to_string(), "file".to_string()];
+        let config = Config::new(args.into_iter()).unwrap();
+        assert_eq!(config.pattern, "pattern".to_string());
+        assert_eq!(config.file, "file".to_string());
+    }
+
+    #[test]
+    fn test_config_with_missing_file_args() {
+        let args = vec!["app".to_string(), "pattern".to_string()];
+        let result = Config::new(args.into_iter());
+        assert!(result.is_err());
+        assert_eq!(result, Err("no argument passed for file"));
+    }
+
+    #[test]
+    fn test_config_with_missing_file_pattern() {
+        let args = vec!["app".to_string()];
+        let result = Config::new(args.into_iter());
+        assert!(result.is_err());
+        assert_eq!(result, Err("no argument passed for pattern"));
     }
 }
