@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::{env, process};
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 #[derive(PartialEq, Debug)]
 struct Config {
@@ -65,11 +66,20 @@ fn main() {
         process::exit(1);
     });
 
-    let stdout = std::io::stdout();
-    let mut handle = stdout.lock();
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
 
     for (idx, line) in result.into_iter() {
-        writeln!(handle, "{}: {}", idx, line).unwrap();
+        stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)).set_bold(true)).unwrap();
+        write!(stdout, "{}", idx).unwrap();
+        stdout.reset().unwrap();
+
+        if let Some(pos) = line.find(&config.pattern) {
+            write!(stdout, ":{}", &line[..pos]).unwrap();
+            stdout.set_color(ColorSpec::new().set_fg(Some(Color::Red)).set_bold(true)).unwrap();
+            write!(stdout, "{}", &config.pattern).unwrap();
+            stdout.reset().unwrap();
+            writeln!(stdout, "{}", &line[pos + config.pattern.len()..]).unwrap();
+        }
     }
 }
 
