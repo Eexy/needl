@@ -1,8 +1,5 @@
 use std::collections::HashMap;
-use std::{
-    env::{self},
-    fs, process,
-};
+use std::{env, fs, process};
 
 #[derive(Debug)]
 struct Config {
@@ -28,6 +25,8 @@ impl Config {
     }
 }
 
+/// Search file content for matching line
+/// If unable to read the file then stop process and return error code
 fn search(config: &Config) -> HashMap<usize, String> {
     let content = match fs::read_to_string(&config.file) {
         Ok(file_content) => file_content,
