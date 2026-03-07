@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use std::{env, fs, process};
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::{env, process};
 
 #[derive(Debug)]
 struct Config {
@@ -26,24 +28,28 @@ impl Config {
 }
 
 /// Search file content for matching line
-/// If unable to read the file then stop process and return error code
-fn search(config: &Config) -> HashMap<usize, String> {
-    let content = match fs::read_to_string(&config.file) {
-        Ok(file_content) => file_content,
-        Err(_) => {
-            eprintln!("unable to read file");
-            process::exit(1)
-        }
+/// If unable to read the file then  return error
+fn search(config: &Config) -> Result<HashMap<usize, String>, String> {
+    let file = match File::open(&config.file) {
+        Ok(file) => file,
+        Err(err) => return Err(err.to_string()),
     };
-    let lines: Vec<_> = content.lines().map(String::from).collect();
+    let reader = BufReader::new(file);
     let mut result = HashMap::new();
-    lines
-        .into_iter()
-        .enumerate()
-        .filter(|(idx, line)| line.contains(&config.pattern))
-        .for_each(|(idx, line)| { result.insert(idx, line); });
 
-    result
+    for (idx, line) in reader.lines().enumerate() {
+        match line {
+            Ok(l) => {
+                if l.contains(&config.pattern) {
+                    result.insert(idx, l);
+                }
+            }
+            Err(e) => return Err(e.to_string())
+        }
+    }
+
+
+    Ok(result)
 }
 
 fn main() {
@@ -51,7 +57,10 @@ fn main() {
         eprintln!("Problem parsing arguments: {err}");
         process::exit(1);
     });
-    let result = search(&config);
+    let result = search(&config).unwrap_or_else(|err| {
+        eprintln!("{}", err);
+        process::exit(1);
+    });
 
     for (idx, line) in result.into_iter() {
         println!("{}: {}", idx, line);
